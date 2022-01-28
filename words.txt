@@ -4636,7 +4636,6 @@ carte
 haute
 molal
 shads
-forma
 ovoid
 pions
 modus
@@ -5187,7 +5186,6 @@ punny
 okras
 hanks
 dipso
-nerfs
 fauns
 calla
 pseud

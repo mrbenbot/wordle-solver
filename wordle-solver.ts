@@ -3,68 +3,41 @@ import { IWordle } from "./wordle";
 
 const allWords = readFileSync("./words.txt", "utf-8").split(`\n`);
 
-export type Feedback = "absent" | "present" | "correct" | "tbd";
+export type Feedback = "absent" | "present" | "correct";
 export type Condition = (
   letter: string,
   i: number
 ) => (word: string) => boolean;
 
-export const cases: {
+export const conditionMap: {
   [key in Feedback]: Condition;
 } = {
-  correct: (a, i) => (b) => a === b[i],
-  present: presentChecker(),
-  absent: absentChecker(),
-  tbd: (a, i) => (b) => a !== b[i],
+  correct: (letter, i) => (word) => letter === word[i],
+  present: (letter, i) => (word) => word.includes(letter) && letter !== word[i],
+  absent: (letter) => (word) => !word.includes(letter),
 };
 
-function absentChecker(): Condition {
-  const badLetters: string[] = [];
-  return (letter: string) => {
-    badLetters.push(letter);
-    return (potentialWord: string) => {
-      return !badLetters.some((letter) => potentialWord.includes(letter));
-    };
-  };
-}
-
-function presentChecker(): Condition {
-  const lettersNotAtIndex: string[][] = [[], [], [], [], []];
-  return (letter, i) => {
-    lettersNotAtIndex[i].push(letter);
-    return (potentialWord) => {
-      return (
-        potentialWord.includes(letter) &&
-        !lettersNotAtIndex[i].includes(potentialWord[i])
-      );
-    };
-  };
-}
-
-export const emojiMapCustom: { [key in Feedback]: string } = {
-  correct: "✅",
-  present: "🔥",
-  absent: "❌",
-  tbd: "🤷‍♂️",
-};
 export const emojiMap: { [key in Feedback]: string } = {
   correct: "🟩",
   present: "🟨",
   absent: "⬜",
-  tbd: "🤷‍♂️",
 };
 
-const firstWordOptions = allWords.filter((word) =>
-  [...word].every((letter, i) => word.indexOf(letter) === i)
-);
+function getFirstWord() {
+  const firstWordOptions = allWords.filter((word) =>
+    [...word].every((letter, i) => word.indexOf(letter) === i)
+  );
+  return firstWordOptions[Math.floor(Math.random() * firstWordOptions.length)];
+}
 
 export class WordleSolver {
   wordle: IWordle;
-  attempts: string[] = [
-    firstWordOptions[Math.floor(Math.random() * firstWordOptions.length)],
-  ];
+  attempts: string[];
+  conditions: ((word: string) => boolean)[];
   constructor(wordle: IWordle) {
     this.wordle = wordle;
+    this.attempts = [getFirstWord()];
+    this.conditions = [];
   }
 
   async solve(): Promise<boolean> {
@@ -80,11 +53,13 @@ export class WordleSolver {
         return true;
       }
 
-      const conditions = feedback.map((result: Feedback, i) => {
-        return cases[result](attempt[i], i);
-      });
+      this.conditions.push(
+        ...feedback.map((result: Feedback, i) => {
+          return conditionMap[result](attempt[i], i);
+        })
+      );
 
-      const nextAttempt = this.getNextAttempt(conditions);
+      const nextAttempt = this.getNextAttempt(this.conditions);
 
       if (nextAttempt) {
         if (this.attempts.length > 5) {
@@ -104,11 +79,7 @@ export class WordleSolver {
 
   getNextAttempt(conditions: ((word: string) => boolean)[]) {
     return allWords.find((nextAttempt) => {
-      const meetsAllFeedbackConditions = conditions.every((condition) =>
-        condition(nextAttempt)
-      );
-
-      return meetsAllFeedbackConditions;
+      return conditions.every((condition) => condition(nextAttempt));
     });
   }
 }
@@ -116,9 +87,3 @@ export class WordleSolver {
 function emojify(feedback: Feedback[]) {
   return feedback.map((fb: Feedback) => emojiMap[fb]).join("");
 }
-
-/*
-Wordle 222 1/6
-
-🟩🟩🟩🟩🟩
-*/
