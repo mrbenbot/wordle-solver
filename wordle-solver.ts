@@ -13,17 +13,30 @@ export const cases: {
   [key in Feedback]: Condition;
 } = {
   correct: (a, i) => (b) => a === b[i],
-  present: (a, i) => (b) => b.includes(a) && a !== b[i],
+  present: presentChecker(),
   absent: absentChecker(),
   tbd: (a, i) => (b) => a !== b[i],
 };
 
-function absentChecker() {
+function absentChecker(): Condition {
   const badLetters: string[] = [];
-  return (a: string) => {
-    badLetters.push(a);
-    return (b: string) => {
-      return !badLetters.some((letter) => b.includes(letter));
+  return (letter: string) => {
+    badLetters.push(letter);
+    return (potentialWord: string) => {
+      return !badLetters.some((letter) => potentialWord.includes(letter));
+    };
+  };
+}
+
+function presentChecker(): Condition {
+  const lettersNotAtIndex: string[][] = [[], [], [], [], []];
+  return (letter, i) => {
+    lettersNotAtIndex[i].push(letter);
+    return (potentialWord) => {
+      return (
+        potentialWord.includes(letter) &&
+        !lettersNotAtIndex[i].includes(potentialWord[i])
+      );
     };
   };
 }
